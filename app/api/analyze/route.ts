@@ -51,7 +51,7 @@ CG Signals: ${JSON.stringify(cgAnalysis?.signals || [])}`;
     const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
 
     return NextResponse.json({
-      ...parsed,
+      ...parsed, 
       realData: {
         priceUsd: bestPair?.priceUsd,
         volume24h: bestPair?.volume?.h24,
