@@ -1,14 +1,17 @@
-// CoinGecko API — Free tier (10k calls/month)
+// CoinGecko API — Free tier
 // Get key: coingecko.com/en/api
-// Docs: docs.coingecko.com
 
 const CG_BASE = "https://api.coingecko.com/api/v3";
 
-function getHeaders() {
+function getHeaders(): Record<string, string> {
   const key = process.env.COINGECKO_API_KEY;
-  return key
-    ? { "x-cg-demo-api-key": key, "Content-Type": "application/json" }
-    : { "Content-Type": "application/json" };
+  if (key) {
+    return {
+      "x-cg-demo-api-key": key,
+      "Content-Type": "application/json",
+    };
+  }
+  return { "Content-Type": "application/json" };
 }
 
 export interface CoinData {
@@ -20,12 +23,10 @@ export interface CoinData {
     current_price: { usd: number };
     market_cap: { usd: number };
     total_volume: { usd: number };
-    price_change_percentage_1h_in_currency: { usd: number };
     price_change_percentage_24h: number;
     price_change_percentage_7d: number;
     circulating_supply: number;
     total_supply: number;
-    max_supply: number;
   };
   community_data: {
     twitter_followers: number;
@@ -37,10 +38,6 @@ export interface CoinData {
   developer_data: {
     forks: number;
     stars: number;
-    subscribers: number;
-    total_issues: number;
-    closed_issues: number;
-    pull_requests_merged: number;
     commit_count_4_weeks: number;
   };
   sentiment_votes_up_percentage: number;
@@ -48,16 +45,25 @@ export interface CoinData {
 }
 
 // Search for a coin by name or symbol
-export async function searchCoin(query: string): Promise<{ id: string; name: string; symbol: string } | null> {
+export async function searchCoin(
+  query: string
+): Promise<{ id: string; name: string; symbol: string } | null> {
   try {
     const res = await fetch(
       `${CG_BASE}/search?query=${encodeURIComponent(query)}`,
-      { headers: getHeaders(), next: { revalidate: 300 } }
+      {
+        headers: getHeaders(),
+        next: { revalidate: 300 },
+      }
     );
     const data = await res.json();
     const coin = data.coins?.[0];
-    return coin ? { id: coin.id, name: coin.name, symbol: coin.symbol } : null;
-  } catch { return null; }
+    return coin
+      ? { id: coin.id, name: coin.name, symbol: coin.symbol }
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 // Get full coin data
@@ -65,11 +71,16 @@ export async function getCoinData(coinId: string): Promise<CoinData | null> {
   try {
     const res = await fetch(
       `${CG_BASE}/coins/${coinId}?localization=false&tickers=false&market_data=true&community_data=true&developer_data=true`,
-      { headers: getHeaders(), next: { revalidate: 120 } }
+      {
+        headers: getHeaders(),
+        next: { revalidate: 120 },
+      }
     );
     if (!res.ok) return null;
     return await res.json();
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 // Analyze CoinGecko data for conviction signals
@@ -78,58 +89,78 @@ export function analyzeCGSignals(coin: CoinData) {
   let organicScore = 50;
   let sustainabilityScore = 50;
 
-  // Volume/MarketCap ratio — high ratio = possible wash trading
   const vol = coin.market_data?.total_volume?.usd || 0;
   const mcap = coin.market_data?.market_cap?.usd || 1;
   const volMcapRatio = vol / mcap;
 
   if (volMcapRatio > 1.5) {
-    signals.push({ type: "bearish", cat: "Volume", msg: `Volume/MCap ratio: ${volMcapRatio.toFixed(2)}x — suspiciously high. Possible wash trading or pump.` });
+    signals.push({
+      type: "bearish",
+      cat: "Volume",
+      msg: `Volume/MCap ratio: ${volMcapRatio.toFixed(2)}x — suspiciously high. Possible wash trading.`,
+    });
     organicScore -= 20;
   } else if (volMcapRatio > 0.3) {
-    signals.push({ type: "bullish", cat: "Volume", msg: `Healthy volume/MCap ratio: ${volMcapRatio.toFixed(2)}x. Organic trading activity.` });
+    signals.push({
+      type: "bullish",
+      cat: "Volume",
+      msg: `Healthy volume/MCap ratio: ${volMcapRatio.toFixed(2)}x. Organic trading activity.`,
+    });
     organicScore += 10;
   }
 
-  // Developer activity
   const commits = coin.developer_data?.commit_count_4_weeks || 0;
   if (commits > 50) {
-    signals.push({ type: "bullish", cat: "Dev Activity", msg: `${commits} commits in last 4 weeks. Active development — real product being built.` });
+    signals.push({
+      type: "bullish",
+      cat: "Dev Activity",
+      msg: `${commits} commits in last 4 weeks. Active development.`,
+    });
     sustainabilityScore += 20;
   } else if (commits === 0) {
-    signals.push({ type: "bearish", cat: "Dev Activity", msg: `Zero commits in 4 weeks. Development stalled or repo abandoned.` });
+    signals.push({
+      type: "bearish",
+      cat: "Dev Activity",
+      msg: `Zero commits in 4 weeks. Development stalled.`,
+    });
     sustainabilityScore -= 20;
   }
 
-  // Community sentiment
   const sentimentUp = coin.sentiment_votes_up_percentage || 0;
   if (sentimentUp > 80) {
-    signals.push({ type: "neutral", cat: "Sentiment", msg: `${sentimentUp.toFixed(0)}% positive sentiment — dangerously euphoric. Peak hype risk.` });
+    signals.push({
+      type: "neutral",
+      cat: "Sentiment",
+      msg: `${sentimentUp.toFixed(0)}% positive — dangerously euphoric. Peak hype risk.`,
+    });
     organicScore -= 10;
   } else if (sentimentUp > 60) {
-    signals.push({ type: "bullish", cat: "Sentiment", msg: `${sentimentUp.toFixed(0)}% positive sentiment — healthy optimism without euphoria.` });
+    signals.push({
+      type: "bullish",
+      cat: "Sentiment",
+      msg: `${sentimentUp.toFixed(0)}% positive sentiment — healthy optimism.`,
+    });
   }
 
-  // Supply check
   const circSupply = coin.market_data?.circulating_supply || 0;
   const totalSupply = coin.market_data?.total_supply || 0;
   const supplyRatio = totalSupply > 0 ? circSupply / totalSupply : 1;
   if (supplyRatio < 0.3) {
-    signals.push({ type: "bearish", cat: "Tokenomics", msg: `Only ${(supplyRatio*100).toFixed(0)}% of supply circulating. Massive unlock pressure incoming.` });
+    signals.push({
+      type: "bearish",
+      cat: "Tokenomics",
+      msg: `Only ${(supplyRatio * 100).toFixed(0)}% of supply circulating. Unlock pressure incoming.`,
+    });
     sustainabilityScore -= 15;
-  }
-
-  // Reddit activity
-  const redditPosts = coin.community_data?.reddit_average_posts_48h || 0;
-  if (redditPosts > 5) {
-    signals.push({ type: "bullish", cat: "Community", msg: `Active Reddit community: ${redditPosts.toFixed(1)} avg posts/48h. Real discussion happening.` });
-    organicScore += 10;
   }
 
   return {
     signals,
     organicScore: Math.min(Math.max(Math.round(organicScore), 0), 100),
-    sustainabilityScore: Math.min(Math.max(Math.round(sustainabilityScore), 0), 100),
+    sustainabilityScore: Math.min(
+      Math.max(Math.round(sustainabilityScore), 0),
+      100
+    ),
     volume24h: vol,
     marketCap: mcap,
     priceChange24h: coin.market_data?.price_change_percentage_24h || 0,
@@ -138,4 +169,3 @@ export function analyzeCGSignals(coin: CoinData) {
     twitterFollowers: coin.community_data?.twitter_followers || 0,
   };
 }
-
