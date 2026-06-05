@@ -45,7 +45,7 @@ CoinGecko: ${cgCoin ? `MCap $${cgCoin.market_data?.market_cap?.usd?.toLocaleStri
 DEX Signals: ${JSON.stringify(dexAnalysis?.signals || [])}
 CG Signals: ${JSON.stringify(cgAnalysis?.signals || [])}`;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
     const result = await model.generateContent(SYSTEM_PROMPT + "\n\n" + realDataContext);
     const text = result.response.text();
     const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
