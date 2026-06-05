@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
       if ((cgCoin.developer_data?.commit_count_4_weeks || 0) === 0) realSignals.push("Zero dev commits — abandoned despite hype");
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
     const result = await model.generateContent(`Pulse manipulation radar for "${query}".
 Real signals: ${realSignals.join("; ") || "none"}
 Buy/Sell 24h: ${bestPair ? `${bestPair.txns?.h24?.buys}/${bestPair.txns?.h24?.sells}` : "N/A"}
