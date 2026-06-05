@@ -31,7 +31,7 @@ export async function analyzeToken(
   query: string
 ): Promise<AnalysisResult> {
   const model = genAI.getGenerativeModel({ 
-    model: "gemini-1.5-flash" 
+    model: "gemini-2.0-flash" 
   });
   const result = await model.generateContent(
     SYSTEM_PROMPT + "\n\nAnalyze this: " + query
