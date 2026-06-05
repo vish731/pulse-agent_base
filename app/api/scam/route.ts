@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
       const finalThreatScore = Math.min(Math.round(totalThreatScore), 100);
       const riskLevel = finalThreatScore >= 70 ? "EXTREME" : finalThreatScore >= 45 ? "HIGH" : finalThreatScore >= 20 ? "MEDIUM" : "LOW";
 
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
       const aiResult = await model.generateContent(`You are Pulse crypto security agent. Write sharp 2-sentence verdict:
 Token: ${result.tokenName || input}, Threat: ${finalThreatScore}/100, Honeypot: ${result.isHoneypot}, LP Locked: ${result.lpLocked}, Sell Tax: ${result.sellTax}%
 Threats: ${(allThreats as Array<{label:string}>).map(t => t.label).join(", ")}
@@ -90,7 +90,7 @@ Be direct.`);
     }
 
     if (isURL(input)) {
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
       const aiResult = await model.generateContent(`Analyze URL for crypto phishing: "${input}". JSON only: {"threatScore":number,"riskLevel":"LOW|MEDIUM|HIGH|EXTREME","threats":[{"severity":"safe|warning|danger","label":"string","desc":"string"}],"verdict":"string","isScam":boolean}`);
       const parsed = JSON.parse(aiResult.response.text().replace(/```json|```/g, "").trim());
       return NextResponse.json({ ...parsed, query: input, dataSource: "Gemini AI" });
@@ -98,7 +98,7 @@ Be direct.`);
 
     const dexSearch = await import("@/lib/data/dexscreener").then(m => m.searchDex(input));
     const topPair = getBestPair(dexSearch.pairs);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
     const aiResult = await model.generateContent(`Analyze "${input}" for scam risk.
 DEX: ${topPair ? `Price $${topPair.priceUsd}, Liq $${topPair.liquidity?.usd?.toLocaleString()}, Age ${Math.floor((Date.now()-(topPair.pairCreatedAt||Date.now()))/86400000)}d, Buys/Sells ${topPair.txns?.h24?.buys}/${topPair.txns?.h24?.sells}` : "Not found"}
 JSON only: {"threatScore":number,"riskLevel":"LOW|MEDIUM|HIGH|EXTREME","threats":[{"severity":"safe|warning|danger","label":"string","desc":"string"}],"verdict":"string","isScam":boolean}`);
